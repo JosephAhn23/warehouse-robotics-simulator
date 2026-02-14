@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warehouse Robotics Simulator</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #252836;
+      --border: #2e3140;
+      --text: #e4e6f0;
+      --text-dim: #8b8fa3;
+      --accent: #6c63ff;
+      --accent-glow: rgba(108, 99, 255, 0.25);
+      --green: #2ecc71;
+      --orange: #f39c12;
+      --red: #e74c3c;
+      --blue: #3498db;
+      --cyan: #00d2d3;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* Header */
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    header h1 span { color: var(--accent); }
+    .header-controls { display: flex; gap: 10px; align-items: center; }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .btn.primary:hover { opacity: 0.85; }
+    .btn.danger { border-color: var(--red); color: var(--red); }
+    .btn.danger:hover { background: rgba(231, 76, 60, 0.15); }
+
+    /* Canvas area */
+    .canvas-area {
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .sidebar h2 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* Stats cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .stat-card .label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .stat-card .value.green { color: var(--green); }
+    .stat-card .value.orange { color: var(--orange); }
+    .stat-card .value.blue { color: var(--blue); }
+    .stat-card .value.accent { color: var(--accent); }
+
+    /* Speed control */
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .speed-control label { font-size: 12px; color: var(--text-dim); }
+    .speed-control input[type="range"] { flex: 1; accent-color: var(--accent); }
+
+    /* Robot list */
+    .robot-list { margin-bottom: 20px; }
+    .robot-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .robot-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .robot-dot.idle { background: var(--green); }
+    .robot-dot.busy { background: var(--orange); }
+    .robot-name { font-weight: 600; min-width: 36px; }
+    .robot-status { color: var(--text-dim); font-size: 11px; flex: 1; }
+    .robot-battery {
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* Event log */
+    .event-log {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .event-log .event { color: var(--text-dim); }
+    .event-log .event .tick { color: var(--accent); font-weight: 600; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Tick indicator */
+    .tick-display {
+      font-size: 13px;
+      color: var(--text-dim);
+      font-family: 'Cascadia Code', monospace;
+    }
+    .tick-display span { color: var(--cyan); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header>
+      <h1><span>&#9670;</span> Warehouse Robotics Simulator</h1>
+      <div class="header-controls">
+        <div class="tick-display">Tick: <span id="tickNum">0</span></div>
+        <button class="btn primary" id="btnPlay">&#9654; Play</button>
+        <button class="btn" id="btnStep">Step</button>
+        <button class="btn" id="btnAddTask">+ Task</button>
+        <button class="btn danger" id="btnReset">Reset</button>
+      </div>
+    </header>
+
+    <!-- Canvas -->
+    <div class="canvas-area">
+      <canvas id="gridCanvas"></canvas>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h2>Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">Completed</div>
+          <div class="value green" id="statCompleted">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Pending</div>
+          <div class="value orange" id="statPending">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Robots Idle</div>
+          <div class="value blue" id="statIdle">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Robots Busy</div>
+          <div class="value accent" id="statBusy">0</div>
+        </div>
+      </div>
+
+      <h2>Simulation Speed</h2>
+      <div class="speed-control">
+        <label>Slow</label>
+        <input type="range" id="speedSlider" min="50" max="1000" value="300" />
+        <label>Fast</label>
+      </div>
+
+      <h2>Legend</h2>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#1e2030"></div>Floor</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#3d3552"></div>Obstacle</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#4a3728"></div>Shelf</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#1a4a3a"></div>Station</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#f1c40f"></div>Charger</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#6c63ff;border-radius:50%"></div>Robot</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#2ecc71;border-radius:50%"></div>Pickup</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c;border-radius:50%"></div>Dropoff</div>
+      </div>
+
+      <h2>Robots</h2>
+      <div class="robot-list" id="robotList"></div>
+
+      <h2>Event Log</h2>
+      <div class="event-log" id="eventLog"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // State
+    // ============================================================
+    let state = null;
+    let playing = false;
+    let timer = null;
+    const events = [];
+
+    const API = '';  // same-origin
+
+    // ============================================================
+    // DOM refs
+    // ============================================================
+    const canvas = document.getElementById('gridCanvas');
+    const ctx = canvas.getContext('2d');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnStep = document.getElementById('btnStep');
+    const btnAddTask = document.getElementById('btnAddTask');
+    const btnReset = document.getElementById('btnReset');
+    const speedSlider = document.getElementById('speedSlider');
+
+    // ============================================================
+    // API helpers
+    // ============================================================
+    async function fetchState() {
+      const res = await fetch(`${API}/api/state`);
+      state = await res.json();
+      render();
+    }
+
+    async function stepSim(n = 1) {
+      const res = await fetch(`${API}/api/step?n=${n}`, { method: 'POST' });
+      const data = await res.json();
+      data.results.forEach(r => {
+        r.events.forEach(e => events.unshift({ tick: r.tick, text: e }));
+      });
+      if (events.length > 200) events.length = 200;
+      await fetchState();
+    }
+
+    async function addTask() {
+      await fetch(`${API}/api/task/random`, { method: 'POST' });
+      await fetchState();
+    }
+
+    async function resetSim() {
+      await fetch(`${API}/api/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: 20, cols: 30, n_robots: 5, n_tasks: 10 }),
+      });
+      events.length = 0;
+      await fetchState();
+    }
+
+    // ============================================================
+    // Play / Pause
+    // ============================================================
+    function togglePlay() {
+      playing = !playing;
+      btnPlay.innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
+      if (playing) {
+        tick();
+      } else {
+        clearTimeout(timer);
+      }
+    }
+
+    function tick() {
+      if (!playing) return;
+      stepSim(1).then(() => {
+        timer = setTimeout(tick, 1050 - parseInt(speedSlider.value));
+      });
+    }
+
+    // ============================================================
+    // Rendering
+    // ============================================================
+    const COLORS = {
+      floor: '#1e2030',
+      obstacle: '#3d3552',
+      shelf: '#4a3728',
+      station: '#1a4a3a',
+      charger: '#665e10',
+    };
+
+    function resizeCanvas() {
+      const area = canvas.parentElement;
+      canvas.width = area.clientWidth * devicePixelRatio;
+      canvas.height = area.clientHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      if (state) render();
+    }
+
+    function render() {
+      if (!state) return;
+
+      const W = canvas.width / devicePixelRatio;
+      const H = canvas.height / devicePixelRatio;
+      const rows = state.rows;
+      const cols = state.cols;
+      const cellW = W / cols;
+      const cellH = H / rows;
+      const cell = Math.min(cellW, cellH);
+      const offsetX = (W - cols * cell) / 2;
+      const offsetY = (H - rows * cell) / 2;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = offsetX + c * cell;
+          const y = offsetY + r * cell;
+          ctx.fillStyle = COLORS[state.grid[r][c]] || COLORS.floor;
+          ctx.fillRect(x + 0.5, y + 0.5, cell - 1, cell - 1);
+        }
+      }
+
+      // Task markers
+      state.tasks.forEach(t => {
+        // Pickup — green diamond
+        drawMarker(offsetX + t.pickup.col * cell + cell / 2,
+                   offsetY + t.pickup.row * cell + cell / 2,
+                   cell * 0.25, '#2ecc71', 'pickup');
+        // Dropoff — red diamond
+        drawMarker(offsetX + t.dropoff.col * cell + cell / 2,
+                   offsetY + t.dropoff.row * cell + cell / 2,
+                   cell * 0.25, '#e74c3c', 'dropoff');
+      });
+
+      // Robot paths (ghost trail)
+      state.robots.forEach(robot => {
+        if (robot.path && robot.path.length > 0) {
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(108, 99, 255, 0.3)';
+          ctx.lineWidth = 2;
+          ctx.moveTo(
+            offsetX + robot.col * cell + cell / 2,
+            offsetY + robot.row * cell + cell / 2
+          );
+          robot.path.forEach(p => {
+            ctx.lineTo(
+              offsetX + p.col * cell + cell / 2,
+              offsetY + p.row * cell + cell / 2
+            );
+          });
+          ctx.stroke();
+        }
+      });
+
+      // Robots
+      state.robots.forEach(robot => {
+        const cx = offsetX + robot.col * cell + cell / 2;
+        const cy = offsetY + robot.row * cell + cell / 2;
+        const radius = cell * 0.35;
+
+        // Glow
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2);
+        ctx.fillStyle = robot.status === 'idle'
+          ? 'rgba(46, 204, 113, 0.25)'
+          : 'rgba(108, 99, 255, 0.3)';
+        ctx.fill();
+
+        // Body
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = robot.status === 'idle' ? '#2ecc71' : '#6c63ff';
+        ctx.fill();
+
+        // Label
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(9, cell * 0.3)}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(robot.id, cx, cy);
+
+        // Battery bar
+        const barW = cell * 0.6;
+        const barH = 3;
+        const barX = cx - barW / 2;
+        const barY = cy + radius + 4;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = robot.battery > 30 ? '#2ecc71' : '#e74c3c';
+        ctx.fillRect(barX, barY, barW * (robot.battery / 100), barH);
+      });
+
+      // Update stats
+      document.getElementById('tickNum').textContent = state.tick;
+      document.getElementById('statCompleted').textContent = state.stats.completed;
+      document.getElementById('statPending').textContent = state.stats.pending;
+      document.getElementById('statIdle').textContent = state.stats.robots_idle;
+      document.getElementById('statBusy').textContent = state.stats.robots_busy;
+
+      // Robot list
+      const robotList = document.getElementById('robotList');
+      robotList.innerHTML = state.robots.map(r => `
+        <div class="robot-item">
+          <div class="robot-dot ${r.status === 'idle' ? 'idle' : 'busy'}"></div>
+          <span class="robot-name">${r.id}</span>
+          <span class="robot-status">${r.status.replace(/_/g, ' ')}</span>
+          <span class="robot-battery" style="color: ${r.battery > 30 ? '#2ecc71' : '#e74c3c'}">${r.battery}%</span>
+        </div>
+      `).join('');
+
+      // Event log
+      const log = document.getElementById('eventLog');
+      log.innerHTML = events.slice(0, 50).map(e =>
+        `<div class="event"><span class="tick">[${e.tick}]</span> ${e.text}</div>`
+      ).join('');
+    }
+
+    function drawMarker(x, y, size, color, type) {
+      ctx.save();
+      ctx.translate(x, y);
+      if (type === 'pickup') {
+        // Up-arrow / triangle
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size * 0.7, size * 0.5);
+        ctx.lineTo(-size * 0.7, size * 0.5);
+        ctx.closePath();
+      } else {
+        // Down-arrow / inverted triangle
+        ctx.beginPath();
+        ctx.moveTo(0, size);
+        ctx.lineTo(size * 0.7, -size * 0.5);
+        ctx.lineTo(-size * 0.7, -size * 0.5);
+        ctx.closePath();
+      }
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.8;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    // ============================================================
+    // Event listeners
+    // ============================================================
+    btnPlay.addEventListener('click', togglePlay);
+    btnStep.addEventListener('click', () => stepSim(1));
+    btnAddTask.addEventListener('click', addTask);
+    btnReset.addEventListener('click', resetSim);
+    window.addEventListener('resize', resizeCanvas);
+
+    // ============================================================
+    // Init
+    // ============================================================
+    resizeCanvas();
+    fetchState();
+  </script>
+</body>
+</html>
