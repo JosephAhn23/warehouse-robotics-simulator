@@ -77,17 +77,17 @@ uvicorn api.main:app --reload
 ### 1. Warehouse Environment
 A grid-based environment with different cell types: floor, obstacles, shelves, stations (pickup/dropoff), and chargers. Robots navigate the grid avoiding obstacles and each other.
 
-### 2. Path Planning — A* with Time-Aware Constraints
+### 2. Path Planning - A* with Time-Aware Constraints
 Single-agent optimal pathfinding using A* search on a 4-connected grid. Supports time-indexed constraint tables, enabling it to serve as the low-level solver inside CBS.
 
-### 3. Multi-Agent Coordination — Conflict-Based Search (CBS)
+### 3. Multi-Agent Coordination - Conflict-Based Search (CBS)
 Based on [Sharon et al., 2015](https://www.sciencedirect.com/science/article/pii/S0004370214001386). CBS finds optimal collision-free paths for all robots simultaneously by:
 1. Planning each robot independently
 2. Detecting vertex conflicts (two robots at the same cell at the same time)
 3. Branching into constraint tree nodes, adding constraints that force one robot to avoid the conflict
 4. Recursively resolving until all paths are collision-free
 
-### 4. Task Allocation — Hungarian Algorithm
+### 4. Task Allocation - Hungarian Algorithm
 Constructs a cost matrix factoring in:
 - **Distance**: Manhattan distance from robot to task pickup
 - **Priority**: Higher-priority tasks receive lower cost (incentivizing assignment)
@@ -97,10 +97,10 @@ Uses `scipy.optimize.linear_sum_assignment` for O(n³) optimal bipartite matchin
 
 ### 5. Simulation Loop
 Each tick:
-1. **Allocate** — Assign pending tasks to idle robots
-2. **Plan** — Compute collision-free paths via CBS (or A* fallback)
-3. **Move** — Advance each robot one step along its path
-4. **Handle arrivals** — Process pickups and dropoffs, update task states
+1. **Allocate** - Assign pending tasks to idle robots
+2. **Plan** - Compute collision-free paths via CBS (or A* fallback)
+3. **Move** - Advance each robot one step along its path
+4. **Handle arrivals** - Process pickups and dropoffs, update task states
 
 ## REST API Endpoints
 
@@ -122,7 +122,7 @@ Each tick:
 - **Immutable value objects** (`Position` is `frozen=True`) for safe use as dict keys and in sets
 - **Clean state machine** for robot lifecycle: `IDLE → EN_ROUTE_PICKUP → EN_ROUTE_DROPOFF → IDLE`
 - **Separation of concerns**: Models know nothing about algorithms; planner knows nothing about the API
-- **CBS is optimal** for multi-agent pathfinding — guarantees minimum-cost collision-free solution
+- **CBS is optimal** for multi-agent pathfinding - guarantees minimum-cost collision-free solution
 - **Graceful fallback**: If CBS exceeds its search budget, falls back to independent A* planning
 
 ## Testing
@@ -141,8 +141,8 @@ python -m pytest tests/ -v
 
 ## Technologies
 
-- **Python 3.11+** — type hints, dataclasses, slots
-- **FastAPI** — async REST API with auto-generated OpenAPI docs
-- **NumPy / SciPy** — cost matrix construction and Hungarian algorithm
-- **HTML5 Canvas** — real-time grid visualization with smooth rendering
-- **pytest + pytest-asyncio + httpx** — async integration testing
+- **Python 3.11+** - type hints, dataclasses, slots
+- **FastAPI** - async REST API with auto-generated OpenAPI docs
+- **NumPy / SciPy** - cost matrix construction and Hungarian algorithm
+- **HTML5 Canvas** - real-time grid visualization with smooth rendering
+- **pytest + pytest-asyncio + httpx** - async integration testing
